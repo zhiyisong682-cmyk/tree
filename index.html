@@ -3,77 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>璀璨粒子圣诞树</title>
+    <title>Magical Cinematic Tree</title>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; }
-        canvas { display: block; }
-        #title {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            color: white;
-            font-family: 'Arial', sans-serif;
-            letter-spacing: 5px;
-            pointer-events: none;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%); }
+        .ui {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: white; pointer-events: none;
+            z-index: 10; opacity: 0.8;
         }
+        h1 {
+            font-size: 4rem; font-weight: 100; letter-spacing: 15px; margin: 0;
+            background: linear-gradient(to right, #fff, #ffd700, #fff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(255,215,0,0.5));
+        }
+        .hint { font-size: 0.8rem; letter-spacing: 3px; margin-top: 20px; color: #aaa; }
     </style>
 </head>
 <body>
-    <div id="title">MERRY CHRISTMAS</div>
+    <div class="ui">
+        <h1>MERRY CHRISTMAS</h1>
+        <div class="hint">DRAG TO ROTATE • SCROLL TO ZOOM</div>
+    </div>
+    <div id="canvas-container"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
     <script>
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        let scene, camera, renderer, particles, star;
+        let mouseX = 0, mouseY = 0;
 
-        // 创建粒子圣诞树
-        const particleCount = 1500;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 12);
 
-        for (let i = 0; i < particleCount; i++) {
-            // 圣诞树螺旋算法
-            const t = i / particleCount;
-            const r = 5 * (1 - t);
-            const angle = 20 * t;
-            
-            const x = r * Math.cos(angle);
-            const y = t * 15 - 7.5;
-            const z = r * Math.sin(angle);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            positions[i * 3] = x + (Math.random() - 0.5) * 0.5;
-            positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = z + (Math.random() - 0.5) * 0.5;
+            // 1. 创建圣诞树粒子 (核心：螺旋算法 + 随机抖动)
+            const particleCount = 20000;
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(particleCount * 3);
+            const cols = new Float32Array(particleCount * 3);
+            const sizes = new Float32Array(particleCount);
 
-            // 绿色和金色的渐变
-            colors[i * 3] = t > 0.9 ? 1 : 0.2; // R
-            colors[i * 3 + 1] = t > 0.9 ? 0.8 : 0.8; // G
-            colors[i * 3 + 2] = 0.2; // B
+            for (let i = 0; i < particleCount; i++) {
+                const ratio = i / particleCount;
+                const angle = ratio * Math.PI * 40; // 旋转圈数
+                const radius = 5 * (1 - ratio);     // 底部宽，顶部窄
+                
+                // 树体形状
+                const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 0.4;
+                const y = ratio * 12 - 5;
+                const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 0.4;
+
+                pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+
+                // 颜色渐变：深绿 -> 翠绿 -> 金色
+                const color = new THREE.Color();
+                if (Math.random() > 0.9) {
+                    color.setHex(0xffd700); // 随机金点
+                } else {
+                    color.setHSL(0.3 + ratio * 0.1, 0.8, 0.2 + ratio * 0.4);
+                }
+                cols[i * 3] = color.r; cols[i * 3 + 1] = color.g; cols[i * 3 + 2] = color.b;
+                sizes[i] = Math.random() * 2;
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+
+            const mat = new THREE.PointsMaterial({
+                size: 0.04,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            particles = new THREE.Points(geo, mat);
+            scene.add(particles);
+
+            // 2. 顶部的闪烁星
+            const starGeo = new THREE.SphereGeometry(0.2, 24, 24);
+            const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            star = new THREE.Mesh(starGeo, starMat);
+            star.position.set(0, 7, 0);
+            scene.add(star);
+
+            // 3. 环境雪花
+            const snowGeo = new THREE.BufferGeometry();
+            const snowPos = new Float32Array(3000 * 3);
+            for(let i=0; i<9000; i++) snowPos[i] = (Math.random() - 0.5) * 40;
+            snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+            const snowMat = new THREE.PointsMaterial({ size: 0.03, color: 0xffffff, transparent: true, opacity: 0.5 });
+            const snow = new THREE.Points(snowGeo, snowMat);
+            scene.add(snow);
+
+            // 交互控制
+            document.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX - window.innerWidth / 2) / 100;
+                mouseY = (e.clientY - window.innerHeight / 2) / 100;
+            });
+
+            animate();
         }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const material = new THREE.PointsMaterial({
-            size: 0.1,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8
-        });
-
-        const tree = new THREE.Points(geometry, material);
-        scene.add(tree);
-
-        camera.position.z = 15;
 
         function animate() {
             requestAnimationFrame(animate);
-            tree.rotation.y += 0.01; // 旋转动画
+            const time = Date.now() * 0.001;
+
+            particles.rotation.y += 0.005;
+            
+            // 相机随鼠标平滑移动
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY + 2 - camera.position.y) * 0.05;
+            camera.lookAt(0, 1, 0);
+
+            // 星星呼吸效果
+            const s = 1 + Math.sin(time * 5) * 0.2;
+            star.scale.set(s, s, s);
+
             renderer.render(scene, camera);
         }
 
@@ -83,7 +137,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        animate();
+        init();
     </script>
 </body>
 </html>
