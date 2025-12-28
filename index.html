@@ -1,33 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cinematic Particle Christmas Tree</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>璀璨粒子圣诞树</title>
     <style>
-      body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #050505; }
-      #root { width: 100%; height: 100%; }
+        body { margin: 0; background: #050505; overflow: hidden; }
+        canvas { display: block; }
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 5px;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.4.2",
-    "three": "https://esm.sh/three@^0.182.0",
-    "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
-    "@react-three/postprocessing": "https://esm.sh/@react-three/postprocessing@^3.0.4",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+<body>
+    <div id="title">MERRY CHRISTMAS</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 创建粒子圣诞树
+        const particleCount = 1500;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            // 圣诞树螺旋算法
+            const t = i / particleCount;
+            const r = 5 * (1 - t);
+            const angle = 20 * t;
+            
+            const x = r * Math.cos(angle);
+            const y = t * 15 - 7.5;
+            const z = r * Math.sin(angle);
+
+            positions[i * 3] = x + (Math.random() - 0.5) * 0.5;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z + (Math.random() - 0.5) * 0.5;
+
+            // 绿色和金色的渐变
+            colors[i * 3] = t > 0.9 ? 1 : 0.2; // R
+            colors[i * 3 + 1] = t > 0.9 ? 0.8 : 0.8; // G
+            colors[i * 3 + 2] = 0.2; // B
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.1,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const tree = new THREE.Points(geometry, material);
+        scene.add(tree);
+
+        camera.position.z = 15;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            tree.rotation.y += 0.01; // 旋转动画
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
